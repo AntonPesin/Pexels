@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Pexels_App</string>
+    <string name="search_hint">Поиск</string>
+    <string name="home">Дом</string>
+    <string name="bookmarks">Закладки</string>
+    <string name="unknown">Неизвестный пользовтаель</string>
+    <string name="no_results">Результаты не найдены</string>
+    <string name="explore">Изучить</string>
+    <string name="try_again">Повторить</string>
+    <string name="image_not_found">Фото не найдено</string>
+    <string name="havent_saved">Вы ещё ничего не сохраняли</string>
+    <string name="download">Скачать</string>
+    <string name="internet_off">Отсутсвует подключение к интернету</string>
+
+    <string name="image">Фото от</string>
+
+    <string name="error_tag">Ошибка</string>
+    <string name="error_429">Слишком много запросов</string>
+</resources>

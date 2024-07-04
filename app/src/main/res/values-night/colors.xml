@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <color name="transparent_white">#1E1E1E</color> <!-- Application dark background color -->
+    <color name="chip_text_color_not_activated">#FFFFFF</color> <!-- The color of the Chips when they are not activated -->
+
+    <color name="hint_color">#B5B5B5</color> <!-- Hint color -->
+    <color name="chips_searchView_color">#393939</color> <!-- Chips and SearchView color for Dark Mode -->
+    <bool name="status_bar_icon_color">false</bool> <!--White icons for Dark Mode -->
+</resources>

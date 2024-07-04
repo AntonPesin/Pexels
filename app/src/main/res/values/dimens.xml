@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="chip_corner_radius">30dp</dimen>
+    <dimen name="selector_radius">30dp</dimen>
+    <dimen name="selector_height">3dp</dimen>
+</resources>

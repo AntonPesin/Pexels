@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+
+    <style name="CustomSearchViewStyle" parent="Widget.Material3.SearchView">
+        <item name="android:searchIcon">@drawable/search_icon</item>
+        <item name="android:editTextColor">?attr/hintColor_attr</item>
+        <item name="android:textColorHint">?attr/hintColor_attr</item>
+        <item name="hintEnabled">true</item>
+        <item name="android:queryBackground">@android:color/transparent</item>
+
+    </style>
+
+
+    <style name="ChipTextAppearance" parent="TextAppearance.MaterialComponents.Chip">
+        <item name="android:textColor">@color/chip_text_color_selector</item>
+    </style>
+
+    <style name="Custom.Indicator" parent="Widget.Material3.BottomNavigationView.ActiveIndicator">
+        <item name="android:color">@color/app_red</item>
+    </style>
+
+
+    <style name="roundImageView" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">30dp</item>
+    </style>
+
+</resources>

@@ -1,0 +1,30 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Base application theme. -->
+    <style name="Theme.App.Main" parent="Theme.Material3.DayNight">
+        <item name="android:statusBarColor">@color/transparent_white</item>
+        <item name="android:windowLightStatusBar">@bool/status_bar_icon_color</item>
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:navigationBarColor">@color/transparent_white</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">true</item>
+        <item name="windowBackground_attr">@color/transparent_white</item>
+        <item name="android:windowBackground">?attr/windowBackground_attr</item>
+
+
+        <item name="bottomNavigationBackground">@color/transparent_white</item>
+        <item name="backgroundColor_attr">@color/chip_background_selector</item>
+        <item name="searchViewStyle">@color/chips_searchView_color</item>
+        <item name="hintColor_attr">@color/hint_color</item>
+        <item name="android:fitsSystemWindows">true</item>
+    </style>
+
+    <!-- Splash Screen Theme -->
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/app_red</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/animated_logo</item>
+        <item name="windowSplashScreenAnimationDuration">5000</item>
+        <item name="postSplashScreenTheme">@style/Theme.App.Main</item>
+    </style>
+
+</resources>

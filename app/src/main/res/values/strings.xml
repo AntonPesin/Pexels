@@ -1,0 +1,23 @@
+<resources>
+    <string name="app_name">Pexels</string>
+    <string name="search_hint">Search</string>
+
+    <string name="home">Home</string>
+    <string name="bookmarks">Bookmarks</string>
+    <string name="unknown">Unknown username</string>
+    <string name="no_results">No results found</string>
+    <string name="explore">Explore</string>
+    <string name="try_again">Try again</string>
+    <string name="image_not_found">Image not Found</string>
+
+    <string name="download">Download</string>
+    <string name="havent_saved">You haven`t save anything yet</string>
+    <string name="internet_off">no internet connection</string>
+
+    <string name="image">Photo by</string>
+    g>
+
+    <string name="error_tag">Error</string>
+    <string name="error_429">Too Many Requests</string>
+
+</resources>

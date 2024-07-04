@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_checked="true">
+        <layer-list>
+            <item android:width="50dp" android:gravity="top|center_horizontal">
+                <shape android:shape="rectangle">
+                    <size android:height="@dimen/selector_height" />
+                    <solid android:color="@color/app_red" />
+                    <corners android:bottomLeftRadius="@dimen/selector_radius" android:bottomRightRadius="@dimen/selector_radius" android:topLeftRadius="@dimen/selector_radius" android:topRightRadius="@dimen/selector_radius" />
+                </shape>
+            </item>
+        </layer-list>
+    </item>
+
+    <item android:state_checked="false">
+        <layer-list>
+            <item android:width="50dp" android:gravity="top|center_horizontal">
+                <shape android:shape="rectangle">
+                    <size android:height="@dimen/selector_height" />
+                    <solid android:color="@color/transparent" />
+                    <corners android:bottomLeftRadius="@dimen/selector_radius" android:bottomRightRadius="@dimen/selector_radius" android:topLeftRadius="@dimen/selector_radius" android:topRightRadius="@dimen/selector_radius" />
+                </shape>
+            </item>
+        </layer-list>
+    </item>
+</selector>
