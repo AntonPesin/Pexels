@@ -1,6 +1,6 @@
 package com.projects.pexels_app.data
 
-import com.projects.pexels_app.data.network.lists.CollectionPhotoList
+
 import com.projects.pexels_app.data.network.lists.CollectionsList
 import com.projects.pexels_app.data.network.lists.PhotoList
 import com.projects.pexels_app.data.network.models.MediaModel
