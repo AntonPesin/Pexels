@@ -1,36 +1,34 @@
 package com.projects.pexels_app.ui.viewmodels
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
-import com.projects.pexels_app.App
-import com.projects.pexels_app.data.network.models.MediaModel
-import com.projects.pexels_app.data.network.repository.db.dao.PhotoDao
+import com.projects.pexels_app.data.db.PhotoDataBase
+import com.projects.pexels_app.domain.models.Photo
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
-
+@HiltViewModel
 class BookmarksViewModel @Inject constructor(
-    application: Application,
-) : AndroidViewModel(application) {
 
-    private val photoDao: PhotoDao = App.INSTANCE.photoDataBase.photoDao()
+    private val dataBase: PhotoDataBase,
+) : ViewModel() {
 
     suspend fun hasPhotos(): Boolean {
         return withContext(Dispatchers.IO) {
-            photoDao.getPhotoCount() > 0
+            dataBase.photoDao().getPhotoCount() > 0
         }
     }
 
-    fun getPagingPhotos(): Flow<PagingData<MediaModel>> {
+    fun getPagingPhotos(): Flow<PagingData<Photo>> {
         return Pager(
             PagingConfig(pageSize = 30),
-            pagingSourceFactory = { photoDao.getPagingPhotos() }
+            pagingSourceFactory = { dataBase.photoDao().getPagingPhotos() }
         ).flow.cachedIn(viewModelScope)
     }
 

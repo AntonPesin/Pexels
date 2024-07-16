@@ -2,11 +2,7 @@ package com.projects.pexels_app.ui.fragments
 
 
 import android.animation.ValueAnimator
-import android.content.Context
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
 import android.os.Bundle
-import android.util.Log
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
@@ -19,35 +15,27 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.paging.LoadState
-import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.chip.Chip
 import com.projects.pexels_app.R
-import com.projects.pexels_app.data.network.models.CollectionModel
-import com.projects.pexels_app.data.network.models.MediaModel
 import com.projects.pexels_app.databinding.HomeBinding
-import com.projects.pexels_app.ui.adapters.CuratedPhotoAdapter
-import com.projects.pexels_app.ui.adapters.PhotoAdapter
-import com.projects.pexels_app.ui.navigation.Navigation
+import com.projects.pexels_app.domain.models.Collection
+import com.projects.pexels_app.ui.adapter.PhotoAdapter
 import com.projects.pexels_app.ui.viewmodels.MainViewModel
 import com.projects.pexels_app.utils.Keys
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
 
 class Home : Fragment() {
     private var _binding: HomeBinding? = null
     private val binding get() = _binding!!
-    private val mainViewModel: MainViewModel by viewModels({ requireActivity() })
-    private lateinit var navigationHandler: Navigation
+    private val viewModel: MainViewModel by viewModels({ requireActivity() })
     private var selectedChip: Chip? = null
     private var searchJob: Job? = null
-    private val curatedPhotoAdapter = CuratedPhotoAdapter()
-    private val photoAdapter = PhotoAdapter()
-    private var currentAdapter: RecyclerView.Adapter<*>? = null
+    private var loadCuratedPhotosJob: Job? = null
+    private lateinit var adapter: PhotoAdapter
     private val activeChips = mutableSetOf<Chip>()
+    private var isInternetAvailable = false
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -60,63 +48,120 @@ class Home : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        navigationHandler = Navigation(findNavController())
 
-        setNavItemsIcons()
-        checkInternetConnectivity()
 
+        lifecycleScope.launch {
+            viewModel.loadCollections()
+            loadCuratedPhotos()
+            loadChips()
+            setupViews()
+            setupListeners()
+            setNavItemsIcons()
+        }
+            lifecycleScope.launch {
+            viewModel.isConnected.collect { isConnected ->
+                if (isConnected) {
+                    isInternetAvailable = true
+                } else {
+                    if (_binding != null) {
+                        loadCuratedPhotosJob?.cancel()
+                        searchJob?.cancel()
+                        isInternetAvailable = false
+                        binding.homeRecyclerview.visibility = View.GONE
+                        binding.chipGroup.visibility = View.GONE
+                        hideProgressBar()
+                        binding.stubInternetFrame.visibility = View.VISIBLE
+                    }
+                }
+            }
+        }
+
+    }
+
+    private fun setupViews() {
+        adapter = PhotoAdapter(Keys.HOME.name) { photo, sourceFragment ->
+            val bundle = Bundle().apply {
+                if (photo != null) {
+                    putInt(Keys.ID.name, photo.id)
+                    putString(Keys.FRAGMENT_NAME.name, sourceFragment)
+                }
+            }
+            if (findNavController().currentDestination?.id != R.id.details_fragment) {
+                findNavController().navigate(R.id.action_home_fragment_to_details_fragment, bundle)
+            }
+        }
+        binding.homeRecyclerview.adapter = adapter
+        if (isInternetAvailable && adapter.itemCount > 0){
+            binding.explore.visibility = if (adapter.itemCount == 0) View.VISIBLE else View.GONE
+            binding.error.visibility = if (adapter.itemCount == 0) View.VISIBLE else View.GONE
+        }
+        setupLoadStateListener()
+
+    }
+
+    private fun setupListeners() {
         binding.navigationBar.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.bookmarks_menu -> {
                     binding.navigationBar.menu.findItem(R.id.home_menu).isChecked = false
-                    navigationHandler.navigateHomeToBookmarks()
+                    findNavController().navigate(R.id.action_home_fragment_to_bookmarks_fragment)
                 }
             }
             true
         }
 
+        binding.explore.setOnClickListener {
+            loadCuratedPhotos()
+        }
+
         binding.stubInternetFrame.setOnClickListener {
-            checkInternetConnectivity()
+            lifecycleScope.launch {
+                if (isInternetAvailable) {
+                    if (binding.searchView.query.isNotEmpty()) {
+                        searchForPhotos(binding.searchView.query.toString())
+                    } else {
+                        loadCuratedPhotos()
+                    }
+                    viewModel.loadCollections()
+                    loadChips()
+                    binding.homeRecyclerview.visibility = View.VISIBLE
+                    binding.chipGroup.visibility = View.VISIBLE
+                    binding.stubInternetFrame.visibility = View.GONE
+                } else {
+                    Toast.makeText(requireContext(), R.string.internet_off, Toast.LENGTH_SHORT)
+                        .show()
+                }
+            }
         }
 
         binding.searchView.setOnQueryTextListener(
             object : SearchView.OnQueryTextListener {
-                override fun onQueryTextSubmit(keyword: String): Boolean {
-                    lifecycleScope.launch {
-                        performSearch(keyword)
+                override fun onQueryTextSubmit(query: String): Boolean {
+                    if (query.isNotEmpty()) {
+                        searchForPhotos(query)
                     }
                     return true
                 }
 
-                override fun onQueryTextChange(keyword: String): Boolean {
-                    updateChipState(keyword)
-                    searchJob?.cancel()
-                    searchJob = lifecycleScope.launch {
-                        delay(1000)
-                        performSearch(keyword)
+                override fun onQueryTextChange(query: String): Boolean {
+                    updateChipState(query)
+                    if (query.isNotEmpty()) {
+                        searchForPhotos(query)
+                    } else {
+                        loadCuratedPhotos()
                     }
                     return true
                 }
             }
         )
 
-        curatedPhotoAdapter.setOnImageClickListener(
-            object : CuratedPhotoAdapter.PhotoClickListener {
-                override fun onPhotoClick(photo: MediaModel?) {
-                    navigationHandler.navigateHomeToDetails(photo?.id, Keys.HOME.name)
-                }
-            })
-
-        photoAdapter.setOnImageClickListener(
-            object : PhotoAdapter.PhotoClickListener {
-                override fun onPhotoClick(photo: MediaModel?) {
-                    navigationHandler.navigateHomeToDetails(photo?.id, Keys.HOME.name)
-                }
-            })
-
-        setupLoadStateListener()
-
+        binding.searchView.setOnCloseListener {
+            loadCuratedPhotos()
+            false
+        }
     }
+
+
 
     private fun setNavItemsIcons() {
         binding.navigationBar.itemIconTintList = null
@@ -127,7 +172,7 @@ class Home : Fragment() {
     }
 
     private fun setupLoadStateListener() {
-        photoAdapter.addLoadStateListener { loadState ->
+        adapter.addLoadStateListener { loadState ->
             if (_binding != null) {
                 when (loadState.refresh) {
                     is LoadState.Loading -> showLoadingState()
@@ -139,16 +184,19 @@ class Home : Fragment() {
     }
 
     private fun showLoadingState() {
-        showProgressBar()
-        binding.stubInternetFrame.visibility = View.GONE
-        binding.error.visibility = View.GONE
-        binding.explore.visibility = View.GONE
-        binding.homeRecyclerview.visibility = View.VISIBLE
+        _binding?.apply {
+            showProgressBar()
+            progressbar.visibility = View.VISIBLE
+            stubInternetFrame.visibility = View.GONE
+            error.visibility = View.GONE
+            explore.visibility = View.GONE
+            homeRecyclerview.visibility = View.VISIBLE
+        }
     }
 
     private fun showContentState() {
         hideProgressBar()
-        if (photoAdapter.itemCount == 0) {
+        if (adapter.itemCount == 0) {
             binding.homeRecyclerview.visibility = View.GONE
         } else {
             binding.error.visibility = View.GONE
@@ -167,12 +215,15 @@ class Home : Fragment() {
 
     private suspend fun loadChips() {
         binding.chipGroup.removeAllViews()
-        mainViewModel.collections.collect { collections ->
-            updateChipGroup(collections)
+        lifecycleScope.launch {
+            viewModel.collections.collect { collections ->
+                updateChipGroup(collections)
+            }
         }
     }
 
-    private fun updateChipGroup(collections: List<CollectionModel>) {
+    private fun updateChipGroup(collections: List<Collection>) {
+        binding.chipGroup.removeAllViews()
         collections.forEach { collection ->
             val chip = createCustomChip(collection)
             binding.chipGroup.addView(chip)
@@ -187,7 +238,7 @@ class Home : Fragment() {
         binding.progressbar.layoutParams = params
     }
 
-    private fun createCustomChip(collection: CollectionModel): Chip {
+    private fun createCustomChip(collection: Collection): Chip {
         val chip = Chip(requireContext()).apply {
             text = collection.title
             isCheckable = true
@@ -225,35 +276,11 @@ class Home : Fragment() {
         return chip
     }
 
-    private suspend fun performSearch(keyword: String) {
-        currentAdapter = photoAdapter
-        binding.homeRecyclerview.adapter = currentAdapter
-        if (keyword.isNotEmpty()) {
-            delay(1000)
-            mainViewModel.keyword.value = keyword
-            mainViewModel.pagedSearchPhotos.collectLatest { pagingData ->
-                photoAdapter.submitData(pagingData)
-            }
-        } else {
-            loadCuratedPhotos()
-        }
-    }
-
     private fun loadCuratedPhotos() {
-        lifecycleScope.launch {
-            delay(1000)
-            val curatedPhotos = mainViewModel.getCuratedPhotos()
-            curatedPhotos?.let {
-                currentAdapter = curatedPhotoAdapter
-                binding.homeRecyclerview.adapter = curatedPhotoAdapter
-                curatedPhotoAdapter.setData(it)
-                if (curatedPhotoAdapter.itemCount > 0) {
-                    binding.homeRecyclerview.visibility = View.VISIBLE
-                    binding.error.visibility = View.GONE
-                    binding.explore.visibility = View.GONE
-                } else {
-                    Toast.makeText(requireContext(), "429", Toast.LENGTH_LONG).show()
-                }
+        loadCuratedPhotosJob?.cancel()
+        loadCuratedPhotosJob = viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.getCuratedPhotos().collect { pagingData ->
+                adapter.submitData(pagingData)
             }
         }
     }
@@ -263,7 +290,7 @@ class Home : Fragment() {
             it.progressbar.visibility = View.VISIBLE
             it.progressbar.progress = 0
             val animator = ValueAnimator.ofInt(0, 100)
-            animator.duration = 1500
+            animator.duration = 1000
             animator.addUpdateListener { animation ->
                 _binding?.progressbar?.progress = animation.animatedValue as Int
             }
@@ -275,28 +302,6 @@ class Home : Fragment() {
         _binding?.let {
             it.progressbar.visibility = View.GONE
             it.progressbar.progress = 0
-        }
-    }
-
-    private fun isInternetAvailable(context: Context): Boolean {
-        val connectivityManager =
-            context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val network = connectivityManager.activeNetwork ?: return false
-        val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
-        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-    }
-
-    private fun checkInternetConnectivity() {
-        if (!isInternetAvailable(requireContext())) {
-            Toast.makeText(requireContext(), R.string.internet_off, Toast.LENGTH_LONG).show()
-            binding.stubInternetFrame.visibility = View.VISIBLE
-        } else {
-            lifecycleScope.launch {
-                mainViewModel.loadCollections()
-                loadCuratedPhotos()
-                loadChips()
-            }
-            _binding?.stubInternetFrame?.visibility = View.GONE
         }
     }
 
@@ -326,8 +331,20 @@ class Home : Fragment() {
         selectedChip = null
     }
 
+    private fun searchForPhotos(query: String) {
+        searchJob?.cancel()
+
+        searchJob = lifecycleScope.launch {
+            viewModel.getSearchResults(query).collect {
+                adapter.submitData(it)
+            }
+        }
+    }
+
     override fun onDestroyView() {
         super.onDestroyView()
+        searchJob?.cancel()
+        loadCuratedPhotosJob?.cancel()
         _binding = null
     }
 }

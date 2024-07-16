@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -13,24 +14,19 @@ import androidx.navigation.fragment.findNavController
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.bitmap.CenterCrop
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners
-import com.projects.pexels_app.ui.navigation.Navigation
 import com.projects.pexels_app.R
-import com.projects.pexels_app.data.network.models.MediaModel
 import com.projects.pexels_app.databinding.DetailsBinding
+import com.projects.pexels_app.domain.models.Photo
 import com.projects.pexels_app.ui.viewmodels.DetailsViewModel
-import com.projects.pexels_app.utils.ImageDownloader
+import com.projects.pexels_app.utils.downloader.ImageDownloader
 import com.projects.pexels_app.utils.Keys
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class Details : Fragment() {
     private var _binding: DetailsBinding? = null
     private val binding get() = _binding!!
-    private lateinit var navigationHandler: Navigation
     private val viewModel: DetailsViewModel by viewModels({ requireActivity() })
-
+    private val downloader by lazy { ImageDownloader(requireContext()) }
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -43,58 +39,88 @@ class Details : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val downloader = ImageDownloader(requireContext())
-        navigationHandler = Navigation(findNavController())
         val photoId = arguments?.getInt(Keys.ID.name)
+        if (photoId != null) {
+            setupListeners(photoId)
+        }
+        lifecycleScope.launch {
+            photoId?.let {
+                loadData(it)
+            }
+        }
 
-        photoId?.let { id ->
+
+        collectErrorMessage()
+    }
+
+    private fun setupListeners(photoId: Int) {
+        binding.backIcon.setOnClickListener { findNavController().navigateUp() }
+
+        binding.download.setOnClickListener {
+
             lifecycleScope.launch {
-                showProgressBar()
-                delay(1000)
-                try {
-                    val data = getData(id)
-                    val photo = data.src.medium
-                    val name = data.photographer
-                    binding.name.text = name
-                    Glide.with(requireContext())
-                        .load(photo)
-                        .transform(CenterCrop(), RoundedCorners(30))
-                        .error(R.drawable.placeholder)
-                        .into(binding.zoomablePhoto)
-
-                    val exists = viewModel.photoExists(id)
-                    updateBookmarkIcon(exists)
-
-                    binding.backIcon.setOnClickListener {
-                        findNavController().navigateUp()
-                    }
-
-                    binding.download.setOnClickListener {
-                        lifecycleScope.launch {
-                            downloader.downloadImage(photo, "${R.string.image} $name")
-                        }
-                    }
-
-                    binding.bookmarkDetails.setOnClickListener {
-                        lifecycleScope.launch {
-                            if (viewModel.photoExists(id)) {
-                                viewModel.deletePhoto(id)
-                                updateBookmarkIcon(false)
-                            } else {
-                                viewModel.addPhoto(id, name, photo)
-                                updateBookmarkIcon(true)
+                viewModel.isConnected.collect { isConnected ->
+                    if (!isConnected) {
+                        Toast.makeText(
+                            requireContext(),
+                            getString(R.string.internet_off),
+                            Toast.LENGTH_SHORT
+                        )
+                            .show()
+                    } else {
+                        photoId.let { id ->
+                            lifecycleScope.launch {
+                                val photo = viewModel.getPhotoByIdFromApi(id).src.medium
+                                downloader.downloadImage(
+                                    photo,
+                                    getString(R.string.image) + " " + binding.name.text
+                                )
                             }
                         }
                     }
-                } finally {
-                    hideProgressBar()
                 }
             }
         }
 
-        binding.explore.setOnClickListener {
-            navigationHandler.navigateDetailsToHome()
+        binding.bookmark.setOnClickListener {
+            lifecycleScope.launch {
+                val exists = viewModel.photoExists(photoId)
+                if (exists) {
+                    viewModel.deletePhoto(photoId)
+                } else {
+                    val photoInfo = viewModel.getPhotoByIdFromApi(photoId)
+                    viewModel.addPhoto(photoId, photoInfo.photographer, photoInfo.src.medium)
+                }
+                updateBookmarkIcon(!exists)
+            }
         }
+
+        binding.explore.setOnClickListener {
+            findNavController().navigate(R.id.action_details_fragment_to_home_fragment)
+        }
+    }
+
+    private suspend fun loadData(id: Int) {
+        try {
+            showProgressBar()
+            val data = getData(id)
+            displayPhotoData(data)
+            val exists = viewModel.photoExists(id)
+            updateBookmarkIcon(exists)
+        } catch (e: Exception) {
+            handleError(e)
+        } finally {
+            hideProgressBar()
+        }
+    }
+
+    private fun displayPhotoData(photo: Photo) {
+        binding.name.text = photo.photographer
+        Glide.with(requireContext())
+            .load(photo.src.medium)
+            .transform(CenterCrop(), RoundedCorners(30))
+            .error(R.drawable.placeholder)
+            .into(binding.zoomablePhoto)
     }
 
     private fun updateBookmarkIcon(exists: Boolean) {
@@ -103,54 +129,64 @@ class Details : Fragment() {
         } else {
             R.drawable.bookmark_details_button_inactive
         }
-        binding.bookmarkDetails.setImageDrawable(
+        binding.bookmark.setImageDrawable(
             ContextCompat.getDrawable(requireContext(), drawableId)
         )
+    }
+
+    private suspend fun getData(id: Int): Photo {
+        return if (checkFragment()) {
+            viewModel.getPhotoByIdFromApi(id)
+        } else {
+            viewModel.getPhotoByIdFromDataBase(id)
+        }
     }
 
     private fun checkFragment(): Boolean {
         return arguments?.getString(Keys.FRAGMENT_NAME.name) == Keys.HOME.name
     }
 
-    private suspend fun getData(id: Int?): MediaModel {
-        return if (checkFragment()) {
-            getDataFromApi(id)
-        } else {
-            getDataFromDataBase(id)
+    private fun collectErrorMessage() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.errorMessage().collect { errorMessage ->
+                errorMessage?.let {
+                    Toast.makeText(requireContext(), "$errorMessage", Toast.LENGTH_SHORT)
+                        .show()
+                }
+            }
         }
     }
 
-    private suspend fun getDataFromApi(id: Int?): MediaModel {
-        return viewModel.getPhotoFromApi(id)
-    }
-
-    private suspend fun getDataFromDataBase(id: Int?): MediaModel {
-        return withContext(Dispatchers.IO) {
-            viewModel.photoDao.get(id)
-        }
+    private fun handleError(exception: Exception) {
+        hideProgressBar()
+        binding.explore.visibility = View.VISIBLE
+        binding.errorImageNotFound.visibility = View.VISIBLE
+        binding.download.visibility = View.GONE
+        binding.downloadText.visibility = View.GONE
+        binding.bookmark.visibility = View.GONE
+        Toast.makeText(
+            requireContext(),
+            getString(R.string.error_tag) + " " + exception.message,
+            Toast.LENGTH_SHORT
+        ).show()
     }
 
     private fun showProgressBar() {
-        _binding?.let {
-            it.progressbar.visibility = View.VISIBLE
-            it.progressbar.progress = 0
-            val animator = ValueAnimator.ofInt(0, 100)
-            animator.duration = 1000
-            animator.addUpdateListener { animation ->
-                _binding?.progressbar?.progress = animation.animatedValue as Int
+        binding.progressbar.apply {
+            visibility = View.VISIBLE
+            progress = 0
+            ValueAnimator.ofInt(0, 100).apply {
+                duration = 1000
+                addUpdateListener { animation ->
+                    progress = animation.animatedValue as Int
+                }
+                start()
             }
-            animator.start()
         }
     }
 
     private fun hideProgressBar() {
-        binding.downloadText.visibility = View.VISIBLE
-        binding.backIcon.visibility = View.VISIBLE
-        binding.download.visibility = View.VISIBLE
-        _binding?.let {
-            it.progressbar.visibility = View.GONE
-            it.progressbar.progress = 0
-        }
+        binding.progressbar.visibility = View.GONE
     }
 
     override fun onDestroyView() {

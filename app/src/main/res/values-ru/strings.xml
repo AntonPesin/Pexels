@@ -17,4 +17,6 @@
 
     <string name="error_tag">Ошибка</string>
     <string name="error_429">Слишком много запросов</string>
+
+    <string name="photo_downloaded">Фото скачано</string>
 </resources>

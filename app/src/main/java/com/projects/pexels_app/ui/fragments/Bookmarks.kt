@@ -9,11 +9,9 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
-import com.projects.pexels_app.ui.navigation.Navigation
 import com.projects.pexels_app.R
-import com.projects.pexels_app.data.network.models.MediaModel
 import com.projects.pexels_app.databinding.BookmarksBinding
-import com.projects.pexels_app.ui.adapters.BookmarkAdapter
+import com.projects.pexels_app.ui.adapter.PhotoAdapter
 import com.projects.pexels_app.ui.viewmodels.BookmarksViewModel
 import com.projects.pexels_app.utils.Keys
 import kotlinx.coroutines.delay
@@ -23,9 +21,8 @@ import kotlinx.coroutines.launch
 class Bookmarks : Fragment() {
     private var _binding: BookmarksBinding? = null
     private val binding get() = _binding!!
-    private lateinit var navigationHandler: Navigation
-    private val viewModel: BookmarksViewModel by viewModels()
-    private val adapter = BookmarkAdapter()
+    private val viewModel: BookmarksViewModel by viewModels({ requireActivity() })
+    private lateinit var adapter: PhotoAdapter
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -38,11 +35,10 @@ class Bookmarks : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        navigationHandler = Navigation(findNavController())
 
         setupNavBindings()
 
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             showProgressBar()
             delay(1000)
             checkData()
@@ -53,29 +49,33 @@ class Bookmarks : Fragment() {
         binding.navigationBar.setOnItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.home_menu -> {
-                    navigationHandler.navigateBookmarksToHome()
+                    androidx.navigation.Navigation.findNavController(view)
+                        .navigate(R.id.action_bookmarks_fragment_to_home_fragment)
                 }
             }
             true
         }
 
-        adapter.setOnImageClickListener(
-            object : BookmarkAdapter.PhotoClickListener {
-                override fun onPhotoClick(photo: MediaModel?) {
-                    navigationHandler.navigateBookmarksToDetails(
-                        photo?.id,
-                        Keys.BOOKMARK.name
-                    )
+        adapter = PhotoAdapter(Keys.BOOKMARK.name) { photo, sourceFragment ->
+            val bundle = Bundle().apply {
+                if (photo != null) {
+                    putInt(Keys.ID.name, photo.id)
+                    putString(Keys.FRAGMENT_NAME.name, sourceFragment)
                 }
-            })
+            }
+            if (findNavController().currentDestination?.id != R.id.details_fragment) {
+                findNavController().navigate(R.id.action_bookmarks_fragment_to_details_fragment, bundle)
+            }
+        }
 
 
         binding.bookmarksExplore.setOnClickListener {
-            navigationHandler.navigateBookmarksToHome()
+        androidx.navigation.Navigation.findNavController(view)
+            .navigate(R.id.action_bookmarks_fragment_to_home_fragment)
         }
     }
 
-    private fun setupNavBindings(){
+    private fun setupNavBindings() {
         binding.navigationBar.itemIconTintList = null
         binding.navigationBar.menu.findItem(R.id.bookmarks_menu).isChecked = true
         binding.navigationBar.menu.findItem(R.id.bookmarks_menu)

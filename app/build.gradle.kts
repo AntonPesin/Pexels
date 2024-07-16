@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.jetbrains.kotlin.android)
     id ("kotlin-kapt")
     id ("com.google.dagger.hilt.android")
+    id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin")
 
 }
 
@@ -19,6 +20,8 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
+
+
 
     buildTypes {
         release {
@@ -39,8 +42,10 @@ android {
     buildFeatures {
         dataBinding = true
         viewBinding = true
-
+        buildConfig = true
     }
+
+
 
 }
 
@@ -59,13 +64,14 @@ dependencies {
     //room
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
-    implementation ("androidx.room:room-paging:$2.6.1")
+    implementation ("androidx.room:room-paging:$3.0.1")
     kapt("androidx.room:room-compiler:2.6.1")
 
 
 
     //paging
     implementation("androidx.paging:paging-runtime-ktx:3.3.0")
+    implementation("androidx.paging:paging-common-ktx:3.3.0")
 
     //navigation
     implementation ("androidx.fragment:fragment-ktx:1.4.0")
@@ -97,11 +103,15 @@ dependencies {
     kapt ("com.squareup.moshi:moshi-kotlin-codegen:1.14.0")
 
     //hilt
-    implementation ("com.google.dagger:hilt-android:2.44")
-    kapt ("com.google.dagger:hilt-android-compiler:2.44")
+    implementation ("com.google.dagger:hilt-android:2.51.1")
+    kapt ("com.google.dagger:hilt-android-compiler:2.51.1")
 
     //splashScreen
     implementation ("androidx.core:core-splashscreen:1.0.0")
 
 
+}
+
+kapt {
+    correctErrorTypes = true
 }

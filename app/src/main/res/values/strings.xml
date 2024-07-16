@@ -20,4 +20,6 @@
     <string name="error_tag">Error</string>
     <string name="error_429">Too Many Requests</string>
 
+    <string name="photo_downloaded">Photo downloaded</string>
+
 </resources>

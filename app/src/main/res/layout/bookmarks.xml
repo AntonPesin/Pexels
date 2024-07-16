@@ -37,7 +37,7 @@
 
     </ProgressBar>
 
-    <androidx.core.widget.NestedScrollView
+    <com.projects.pexels_app.utils.SmartNestedScrollView
         android:id="@+id/bookmarks_nestedScrollView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -49,8 +49,8 @@
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/bookmarks_recyclerview"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_width="wrap_content"
+            android:layout_height="0dp"
             android:layout_marginStart="24dp"
             android:layout_marginEnd="24dp"
             android:orientation="vertical"
@@ -59,7 +59,7 @@
             app:spanCount="2">
         </androidx.recyclerview.widget.RecyclerView>
 
-    </androidx.core.widget.NestedScrollView>
+    </com.projects.pexels_app.utils.SmartNestedScrollView>
 
     <TextView
         android:id="@+id/havent_saved"

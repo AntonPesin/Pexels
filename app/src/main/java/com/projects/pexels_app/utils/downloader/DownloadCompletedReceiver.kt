@@ -1,16 +1,19 @@
-package com.projects.pexels_app.utils
+package com.projects.pexels_app.utils.downloader
 
 import android.app.DownloadManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.util.Log
+import android.widget.Toast
+import com.projects.pexels_app.R
 
 class DownloadCompletedReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
         if (intent?.action =="android.intent.action.DOWNLOAD_COMPLETE"){
             val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID,-1L)
             if (id != -1L) {
-                println("Download with ID $id finished")
+                Toast.makeText(context, R.string.photo_downloaded, Toast.LENGTH_LONG).show()
             }
         }
     }

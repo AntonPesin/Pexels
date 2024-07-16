@@ -1,77 +1,66 @@
 package com.projects.pexels_app.ui.viewmodels
 
-import android.app.Application
-import android.util.Log
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.paging.Pager
-import androidx.paging.PagingConfig
 import androidx.paging.PagingData
-import androidx.paging.cachedIn
-import com.projects.pexels_app.data.network.dataSource.SearchDataSource
-import com.projects.pexels_app.data.network.models.CollectionModel
-import com.projects.pexels_app.data.network.models.MediaModel
-import com.projects.pexels_app.data.network.repository.Repository
+import com.projects.pexels_app.data.repositories.ConnectivityRepository
+import com.projects.pexels_app.domain.models.Collection
+import com.projects.pexels_app.domain.models.Photo
+import com.projects.pexels_app.usecases.home.collections.ILoadCollectionsUseCase
+import com.projects.pexels_app.usecases.home.curated.IGetCuratedPhotosUseCase
+import com.projects.pexels_app.usecases.home.search.ISearchUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
-import retrofit2.HttpException
 import javax.inject.Inject
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
-    application: Application,
-    private val repository: Repository,
-) : AndroidViewModel(application) {
+    private val getCuratedPhotosUseCase: IGetCuratedPhotosUseCase,
+    private val searchUseCase: ISearchUseCase,
+    connectivityRepository: ConnectivityRepository,
+    private val loadCollectionUseCase: ILoadCollectionsUseCase,
+) : ViewModel() {
 
     private val _isLoadingCollections = MutableStateFlow(true)
     val isLoadingCollections: StateFlow<Boolean> = _isLoadingCollections.asStateFlow()
 
-    private val _collections = MutableStateFlow<List<CollectionModel>>(emptyList())
-    val collections: StateFlow<List<CollectionModel>> get() = _collections
+    private val _collections = MutableStateFlow<List<Collection>>(emptyList())
+    val collections: StateFlow<List<Collection>> get() = _collections
 
     private val _errorMessage = MutableStateFlow<String?>(null)
-
-    private val _keyword = MutableStateFlow("")
-    val keyword: MutableStateFlow<String> = _keyword
-
-     fun loadCollections() {
+    val isConnected: StateFlow<Boolean> = connectivityRepository.isConnected as StateFlow<Boolean>
+    suspend fun loadCollections() {
         viewModelScope.launch {
             try {
                 _isLoadingCollections.value = true
-                _collections.value = repository.getCollections()
+                _collections.value = loadCollectionUseCase.loadCollections()
             } catch (error: Throwable) {
-                Log.e("MainViewModel load", error.message ?: "")
-                _errorMessage.value = " ${error.message}"
+                _errorMessage.value = "${error.message}"
             } finally {
                 _isLoadingCollections.value = false
             }
         }
     }
 
-    suspend fun getCuratedPhotos(): List<MediaModel>? {
-        return try {
-            repository.getCuratedPhotos()
-        } catch (exception: Exception) {
-            if (exception is HttpException && exception.code() == 429) {
-                throw exception
-            } else {
-                _errorMessage.value = exception.message
-                null
+    suspend fun getCuratedPhotos(): Flow<PagingData<Photo>> {
+        return getCuratedPhotosUseCase.getCuratedPhotos(viewModelScope)
+            .catch { e ->
+                _errorMessage.value = "${e.message}"
+                throw e
             }
-        }
     }
 
-
-    val pagedSearchPhotos: Flow<PagingData<MediaModel>> = keyword.flatMapLatest { keyword ->
-        Pager(
-            config = PagingConfig(pageSize = 30),
-            pagingSourceFactory = { SearchDataSource(repository, keyword) }
-        ).flow.cachedIn(viewModelScope)
+    suspend fun getSearchResults(query: String): Flow<PagingData<Photo>> {
+        return searchUseCase.getSearchResultStream(query, viewModelScope)
+            .catch { e ->
+                _errorMessage.value = "${e.message}"
+                throw e
+            }
     }
 
 }
