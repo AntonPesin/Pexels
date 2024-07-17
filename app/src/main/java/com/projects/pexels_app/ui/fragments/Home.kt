@@ -15,6 +15,7 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.paging.LoadState
+import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.chip.Chip
 import com.projects.pexels_app.R
 import com.projects.pexels_app.databinding.HomeBinding
@@ -90,13 +91,18 @@ class Home : Fragment() {
                 findNavController().navigate(R.id.action_home_fragment_to_details_fragment, bundle)
             }
         }
+        adapter.stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
         binding.homeRecyclerview.adapter = adapter
+        setupExploreError()
+        setupLoadStateListener()
+
+    }
+
+    private fun setupExploreError(){
         if (isInternetAvailable && adapter.itemCount > 0){
             binding.explore.visibility = if (adapter.itemCount == 0) View.VISIBLE else View.GONE
             binding.error.visibility = if (adapter.itemCount == 0) View.VISIBLE else View.GONE
         }
-        setupLoadStateListener()
-
     }
 
     private fun setupListeners() {
@@ -217,7 +223,9 @@ class Home : Fragment() {
         binding.chipGroup.removeAllViews()
         lifecycleScope.launch {
             viewModel.collections.collect { collections ->
-                updateChipGroup(collections)
+                if (_binding != null) {
+                    updateChipGroup(collections)
+                }
             }
         }
     }
@@ -228,7 +236,10 @@ class Home : Fragment() {
             val chip = createCustomChip(collection)
             binding.chipGroup.addView(chip)
         }
+        setProgressBar()
+    }
 
+    private fun setProgressBar(){
         val params = binding.progressbar.layoutParams as ConstraintLayout.LayoutParams
         params.topToBottom = if (binding.chipGroup.childCount > 0) {
             binding.horizontalScrollView.id
@@ -279,8 +290,8 @@ class Home : Fragment() {
     private fun loadCuratedPhotos() {
         loadCuratedPhotosJob?.cancel()
         loadCuratedPhotosJob = viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.getCuratedPhotos().collect { pagingData ->
-                adapter.submitData(pagingData)
+            viewModel.getCuratedPhotos().collect {
+                adapter.submitData(it)
             }
         }
     }
@@ -333,8 +344,7 @@ class Home : Fragment() {
 
     private fun searchForPhotos(query: String) {
         searchJob?.cancel()
-
-        searchJob = lifecycleScope.launch {
+        searchJob = viewLifecycleOwner.lifecycleScope.launch {
             viewModel.getSearchResults(query).collect {
                 adapter.submitData(it)
             }
