@@ -59,7 +59,7 @@ class Home : Fragment() {
             setupListeners()
             setNavItemsIcons()
         }
-            lifecycleScope.launch {
+        lifecycleScope.launch {
             viewModel.isConnected.collect { isConnected ->
                 if (isConnected) {
                     isInternetAvailable = true
@@ -91,15 +91,16 @@ class Home : Fragment() {
                 findNavController().navigate(R.id.action_home_fragment_to_details_fragment, bundle)
             }
         }
-        adapter.stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
+        adapter.stateRestorationPolicy =
+            RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
         binding.homeRecyclerview.adapter = adapter
         setupExploreError()
         setupLoadStateListener()
 
     }
 
-    private fun setupExploreError(){
-        if (isInternetAvailable && adapter.itemCount > 0){
+    private fun setupExploreError() {
+        if (isInternetAvailable && adapter.itemCount > 0) {
             binding.explore.visibility = if (adapter.itemCount == 0) View.VISIBLE else View.GONE
             binding.error.visibility = if (adapter.itemCount == 0) View.VISIBLE else View.GONE
         }
@@ -166,7 +167,6 @@ class Home : Fragment() {
             false
         }
     }
-
 
 
     private fun setNavItemsIcons() {
@@ -239,7 +239,7 @@ class Home : Fragment() {
         setProgressBar()
     }
 
-    private fun setProgressBar(){
+    private fun setProgressBar() {
         val params = binding.progressbar.layoutParams as ConstraintLayout.LayoutParams
         params.topToBottom = if (binding.chipGroup.childCount > 0) {
             binding.horizontalScrollView.id
@@ -297,23 +297,22 @@ class Home : Fragment() {
     }
 
     private fun showProgressBar() {
-        _binding?.let {
-            it.progressbar.visibility = View.VISIBLE
-            it.progressbar.progress = 0
-            val animator = ValueAnimator.ofInt(0, 100)
-            animator.duration = 1000
-            animator.addUpdateListener { animation ->
-                _binding?.progressbar?.progress = animation.animatedValue as Int
-            }
-            animator.start()
+
+        binding.progressbar.visibility = View.VISIBLE
+        binding.progressbar.progress = 0
+        val animator = ValueAnimator.ofInt(0, 100)
+        animator.duration = 1000
+        animator.addUpdateListener { animation ->
+            _binding?.progressbar?.progress = animation.animatedValue as Int
         }
+        animator.start()
+
     }
 
     private fun hideProgressBar() {
-        _binding?.let {
-            it.progressbar.visibility = View.GONE
-            it.progressbar.progress = 0
-        }
+        binding.progressbar.visibility = View.GONE
+        binding.progressbar.progress = 0
+
     }
 
     private fun selectChip(chip: Chip) {

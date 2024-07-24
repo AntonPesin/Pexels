@@ -14,7 +14,6 @@ import com.projects.pexels_app.databinding.BookmarksBinding
 import com.projects.pexels_app.ui.adapter.PhotoAdapter
 import com.projects.pexels_app.ui.viewmodels.BookmarksViewModel
 import com.projects.pexels_app.utils.Keys
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -38,12 +37,9 @@ class Bookmarks : Fragment() {
 
         setupNavBindings()
 
-        viewLifecycleOwner.lifecycleScope.launch {
-            showProgressBar()
-            delay(1000)
+        lifecycleScope.launch {
             checkData()
             loadBookmarksPhoto()
-            hideProgressBar()
         }
 
         binding.navigationBar.setOnItemSelectedListener { item ->
@@ -64,14 +60,17 @@ class Bookmarks : Fragment() {
                 }
             }
             if (findNavController().currentDestination?.id != R.id.details_fragment) {
-                findNavController().navigate(R.id.action_bookmarks_fragment_to_details_fragment, bundle)
+                findNavController().navigate(
+                    R.id.action_bookmarks_fragment_to_details_fragment,
+                    bundle
+                )
             }
         }
 
 
         binding.bookmarksExplore.setOnClickListener {
-        androidx.navigation.Navigation.findNavController(view)
-            .navigate(R.id.action_bookmarks_fragment_to_home_fragment)
+            androidx.navigation.Navigation.findNavController(view)
+                .navigate(R.id.action_bookmarks_fragment_to_home_fragment)
         }
     }
 
@@ -95,34 +94,40 @@ class Bookmarks : Fragment() {
         }
     }
 
-    private fun loadBookmarksPhoto() {
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.getPagingPhotos().collectLatest { pagingData ->
-                adapter.submitData(pagingData)
+        private fun loadBookmarksPhoto() {
+            lifecycleScope.launch {
+                viewModel.isLoadingData.collect { isLoading ->
+                    if (isLoading) {
+                        showProgressBar()
+                    } else {
+                        hideProgressBar()
+                    }
+                }
             }
+
+            lifecycleScope.launch {
+                viewModel.getPagingPhotos().collectLatest { pagingData ->
+                    adapter.submitData(pagingData)
+                }
+            }
+            binding.bookmarksRecyclerview.adapter = adapter
+            binding.bookmarksRecyclerview.visibility = View.VISIBLE
         }
-        binding.bookmarksRecyclerview.visibility = View.VISIBLE
-        binding.bookmarksRecyclerview.adapter = adapter
-    }
 
     private fun showProgressBar() {
-        _binding?.let {
-            it.progressbar.visibility = View.VISIBLE
-            it.progressbar.progress = 0
-            val animator = ValueAnimator.ofInt(0, 100)
-            animator.duration = 1000
-            animator.addUpdateListener { animation ->
-                _binding?.progressbar?.progress = animation.animatedValue as Int
-            }
-            animator.start()
+        binding.progressbar.visibility = View.VISIBLE
+        binding.progressbar.progress = 0
+        val animator = ValueAnimator.ofInt(0, 100)
+        animator.duration = 1000
+        animator.addUpdateListener { animation ->
+            binding.progressbar.progress = animation.animatedValue as Int
         }
+        animator.start()
     }
 
     private fun hideProgressBar() {
-        _binding?.let {
-            it.progressbar.visibility = View.GONE
-            it.progressbar.progress = 0
-        }
+        binding.progressbar.visibility = View.GONE
+        binding.progressbar.progress = 0
     }
 
     override fun onDestroyView() {

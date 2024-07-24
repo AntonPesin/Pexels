@@ -11,13 +11,18 @@ import com.projects.pexels_app.domain.models.Photo
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
+
 @HiltViewModel
 class BookmarksViewModel @Inject constructor(
-
     private val dataBase: PhotoDataBase,
 ) : ViewModel() {
+    private val _isLoadingData = MutableStateFlow(true)
+    val isLoadingData: StateFlow<Boolean> = _isLoadingData.asStateFlow()
 
     suspend fun hasPhotos(): Boolean {
         return withContext(Dispatchers.IO) {
@@ -26,10 +31,14 @@ class BookmarksViewModel @Inject constructor(
     }
 
     fun getPagingPhotos(): Flow<PagingData<Photo>> {
-        return Pager(
+        _isLoadingData.value = true
+        val data = Pager(
             PagingConfig(pageSize = 30),
             pagingSourceFactory = { dataBase.photoDao().getPagingPhotos() }
         ).flow.cachedIn(viewModelScope)
+        _isLoadingData.value = false
+        return data
     }
+
 
 }
