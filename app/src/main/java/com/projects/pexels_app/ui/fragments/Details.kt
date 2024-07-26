@@ -147,7 +147,7 @@ class Details : Fragment() {
     }
 
     private fun collectErrorMessage() {
-        viewLifecycleOwner.lifecycleScope.launch {
+        lifecycleScope.launch {
             viewModel.errorMessage().collect { errorMessage ->
                 errorMessage?.let {
                     Toast.makeText(requireContext(), "$errorMessage", Toast.LENGTH_SHORT)

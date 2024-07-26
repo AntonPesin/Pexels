@@ -289,7 +289,7 @@ class Home : Fragment() {
 
     private fun loadCuratedPhotos() {
         loadCuratedPhotosJob?.cancel()
-        loadCuratedPhotosJob = viewLifecycleOwner.lifecycleScope.launch {
+        loadCuratedPhotosJob = lifecycleScope.launch {
             viewModel.getCuratedPhotos().collect {
                 adapter.submitData(it)
             }
@@ -343,7 +343,7 @@ class Home : Fragment() {
 
     private fun searchForPhotos(query: String) {
         searchJob?.cancel()
-        searchJob = viewLifecycleOwner.lifecycleScope.launch {
+        searchJob = lifecycleScope.launch {
             viewModel.getSearchResults(query).collect {
                 adapter.submitData(it)
             }
